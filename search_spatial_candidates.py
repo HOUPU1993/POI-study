@@ -2,11 +2,11 @@ import numpy as np
 import geopandas as gpd
 from scipy.spatial import cKDTree
 
-
 def search_spatial_candidates(
     reference_gdf: gpd.GeoDataFrame,
     compared_gdf: gpd.GeoDataFrame,
     k: int = 100,
+    max_dist: float = 1000, 
     id_col: str = "id",
     crs_for_distance: int = 3857,
 ):
@@ -37,8 +37,23 @@ def search_spatial_candidates(
 
     cmp_ids = compared_gdf[id_col].to_numpy()
 
+    cand_ids = []
+    cand_dists = []
+
+    for row_idx, row_dist in zip(idx, dist):
+        ids = []
+        dists = []
+
+        for j, d in zip(row_idx, row_dist):
+            if d <= max_dist:
+                ids.append(cmp_ids[j])
+                dists.append(d)
+
+        cand_ids.append(ids)
+        cand_dists.append(dists)
+
     result = reference_gdf.copy()
-    result["cand_ids"] = [[cmp_ids[j] for j in row] for row in idx]
-    result["cand_dist_m"] = dist.tolist()
+    result["cand_ids"] = cand_ids
+    result["cand_dist_m"] = cand_dists
 
     return result
