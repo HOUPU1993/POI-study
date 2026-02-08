@@ -41,7 +41,10 @@ def address_score_check(
     """
 
     # map: compared id -> compared address
-    id_to_addr = compared_gdf.set_index(id_col)[addr_col_cmp].apply(clean_name).to_dict()
+    id_to_addr_clean = compared_gdf.set_index(id_col)[addr_col_cmp].apply(clean_name).to_dict()
+    id_to_addr_raw = compared_gdf.set_index(id_col)[addr_col_cmp].to_dict()
+
+
 
     scores = []
     matched_addrs = []
@@ -56,10 +59,10 @@ def address_score_check(
             continue
 
         addr_ref = clean_name(row.get(addr_col_ref))
-        addr_cmp = id_to_addr.get(matched_id)
+        addr_cmp = id_to_addr_clean.get(matched_id)
 
         if isinstance(addr_cmp, str) and addr_cmp.strip():
-            matched_addrs.append(addr_cmp)
+            matched_addrs.append(id_to_addr_raw.get(matched_id))
         else:
             matched_addrs.append(pd.NA)
 

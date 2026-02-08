@@ -47,7 +47,10 @@ def match_by_name(
     - name_score
     """
 
-    id_to_name = compared_gdf.set_index(id_col)[comp_name_col].apply(clean_name).apply(extract_prinmary_str).to_dict()
+    # clean names for matching
+    id_to_name_clean = compared_gdf.set_index(id_col)[comp_name_col].apply(clean_name).apply(extract_prinmary_str).to_dict()
+    # raw names for storage
+    id_to_name_raw = compared_gdf.set_index(id_col)[comp_name_col].to_dict()
 
     matched_ids = []
     scores = []
@@ -64,7 +67,7 @@ def match_by_name(
             matched_names.append(pd.NA)
             continue
 
-        cand_names = [id_to_name.get(cid, "") for cid in row["cand_ids"]]
+        cand_names = [id_to_name_clean.get(cid, "") for cid in row["cand_ids"]]
 
         match, wr, pos = process.extractOne(
             query,
@@ -83,7 +86,7 @@ def match_by_name(
             matched_ids.append(row["cand_ids"][pos])
             scores.append(score)
             loc_dists.append(row["cand_dist_m"][pos])
-            matched_names.append(cand_names[pos])
+            matched_names.append(id_to_name_raw.get(row["cand_ids"][pos]))
         else:
             matched_ids.append(pd.NA)
             scores.append(score)
