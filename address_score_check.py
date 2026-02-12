@@ -4,7 +4,6 @@ from rapidfuzz import fuzz
 import re
 import unicodedata
 
-
 def clean_name(s):
     if not isinstance(s, str):
         return ""
