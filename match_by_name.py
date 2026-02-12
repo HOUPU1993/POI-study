@@ -1,4 +1,3 @@
-
 from rapidfuzz import process, fuzz
 import pandas as pd
 import re
@@ -13,6 +12,8 @@ def clean_name(s):
     s = "".join(c for c in s if not unicodedata.combining(c)) # 1. unicode normalize (remove accents)
     s = s.upper() # 2. uppercase
     s = re.sub(r"\([^)]*\)", "", s) 
+    s = re.sub(r"\b'S\b", "", s) # new change
+    s = re.sub(r"\bS\b", "", s) # new change
     s = s.encode("ascii", errors="ignore").decode() # 4. remove emoji / non ascii
     s = re.sub(r"[^\w\s]", " ", s) # 5. replace special chars with space
     s = re.sub(r"\s+", " ", s) # 6. collapse spaces
