@@ -43,8 +43,6 @@ def address_score_check(
     id_to_addr_clean = compared_gdf.set_index(id_col)[addr_col_cmp].apply(clean_name).to_dict()
     id_to_addr_raw = compared_gdf.set_index(id_col)[addr_col_cmp].to_dict()
 
-
-
     scores = []
     matched_addrs = []
 
