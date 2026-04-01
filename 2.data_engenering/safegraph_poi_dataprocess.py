@@ -8,9 +8,14 @@ files = glob(folder + "/*.csv.gz")
 
 dfs = []
 
+# for f in files:
+#     print("reading:", f)
+#     dfs.append(pd.read_csv(f))
+    
+dfs = []
 for f in files:
     print("reading:", f)
-    dfs.append(pd.read_csv(f))
+    dfs.append(pd.read_parquet(f))
 
 ny_pa_nj_pt_sf = pd.concat(dfs, ignore_index=True)
 ny_pa_nj_pt_sf = ny_pa_nj_pt_sf[['PLACEKEY','PARENT_PLACEKEY','LOCATION_NAME', 'TRACKING_CLOSED_SINCE', 'LATITUDE','LONGITUDE','TOP_CATEGORY','SUB_CATEGORY','CATEGORY_TAGS','NAICS_CODE','STREET_ADDRESS']]
@@ -20,3 +25,4 @@ ny_pa_nj_pt_sf = ny_pa_nj_pt_sf.drop(columns=['LATITUDE','LONGITUDE'])
 msa_ny = msa_ny.to_crs(ny_pa_nj_pt_sf.crs)
 ny_sf = gpd.sjoin(ny_pa_nj_pt_sf, msa_ny, how='inner',predicate="within").reset_index(drop=True)
 ny_sf = ny_sf.drop(columns=['index_right','OBJECTID','CBSACODE','CBSANAME','CBSATYPE','ALAND','AWATER'])
+ny_sf["TRACKING_CLOSED_SINCE"] = ny_sf["TRACKING_CLOSED_SINCE"].astype(str).replace("None", None).replace("nan", None)
