@@ -165,10 +165,7 @@ def plot_method_A_pooled(
 
         _make_pooled_legend(fig)
         plt.tight_layout(rect=[0, 0.06, 1, 1])
-        plt.savefig(f"{save_prefix}_{fig_tag}.png", dpi=150, bbox_inches="tight")
         plt.show()
-        print(f"Saved: {save_prefix}_{fig_tag}.png")
-
 
 # ==============================================================================
 # Method C — Pooled tract-level plots
@@ -261,6 +258,4 @@ def plot_method_C_pooled(
 
         _make_pooled_legend(fig)
         plt.tight_layout(rect=[0, 0.06, 1, 1])
-        plt.savefig(f"{save_prefix}_{fig_tag}.png", dpi=150, bbox_inches="tight")
         plt.show()
-        print(f"Saved: {save_prefix}_{fig_tag}.png")
