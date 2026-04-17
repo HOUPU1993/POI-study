@@ -1,10 +1,21 @@
+"""
+POI Analysis — Plotting Functions
+===================================
+Pooled diagnostic plots for match rate vs distance / population density.
+All cities are pooled into one scatter cloud; one OLS + one WLS line is fitted.
+"""
+
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+
 from .analysis import _parse_true_match
 
+# ==============================================================================
+# CONSTANTS
+# ==============================================================================
 
 CITY_COLORS = {
     "chicago":  "#4C72B0",
@@ -12,12 +23,17 @@ CITY_COLORS = {
     "la":       "#55A868",
     "bspo":     "#C44E52",
 }
+
 DS_ORDER  = ["ove", "sf", "fsq", "osm"]
 DS_TITLES = {"ove": "OVE", "sf": "SF", "fsq": "FSQ", "osm": "OSM"}
 
 
+# ==============================================================================
+# INTERNAL HELPERS
+# ==============================================================================
+
 def _fit_line_pooled(x, y, w=None):
-    """Fit a line on pooled data, return (x_line, y_line)."""
+    """Fit a line on pooled data. Returns (x_line, y_line)."""
     mask = np.isfinite(x) & np.isfinite(y)
     if w is not None:
         mask &= np.isfinite(w)
@@ -32,31 +48,37 @@ def _fit_line_pooled(x, y, w=None):
 
 def _draw_pooled_panel(ax, pooled_df, x_col, weight_col, x_label, log_x=False):
     """
-    pooled_df: DataFrame with columns [x_col, match_rate, weight_col, city]
-    Scatter colored by city; one OLS + one WLS line fitted on all points.
+    Draw scatter (colored by city) + one OLS line + one WLS line.
+
+    Parameters
+    ----------
+    pooled_df  : DataFrame with columns [x_col, match_rate, weight_col, city]
+    log_x      : if True, apply log transform to x before plotting/fitting
     """
     df = pooled_df.dropna(subset=[x_col, "match_rate", weight_col]).copy()
     if df.empty:
         return
 
-    x_raw = np.log(df[x_col].values) if log_x else df[x_col].values
-    y     = df["match_rate"].values
-    w     = df[weight_col].values
+    x_raw    = np.log(df[x_col].values) if log_x else df[x_col].values
+    y        = df["match_rate"].values
+    w        = df[weight_col].values
     df["_x"] = x_raw
 
     # scatter — colored by city
     for city, grp in df.groupby("city"):
-        ax.scatter(grp["_x"], grp["match_rate"],
-                   color=CITY_COLORS.get(city, "gray"),
-                   alpha=0.35, s=14, zorder=2, label=city)
+        ax.scatter(
+            grp["_x"], grp["match_rate"],
+            color=CITY_COLORS.get(city, "gray"),
+            alpha=0.35, s=14, zorder=2,
+        )
 
-    # OLS line — fitted on all pooled points (solid black)
+    # OLS line — solid black
     xl, yl = _fit_line_pooled(x_raw, y)
     if len(xl):
         ax.plot(xl, yl, color="black", linewidth=2, linestyle="-",
                 label="OLS", zorder=4)
 
-    # WLS line — weighted by n_poi (dashed black)
+    # WLS line — dashed black
     xl, yl = _fit_line_pooled(x_raw, y, w=w)
     if len(xl):
         ax.plot(xl, yl, color="black", linewidth=2, linestyle="--",
@@ -71,6 +93,7 @@ def _draw_pooled_panel(ax, pooled_df, x_col, weight_col, x_label, log_x=False):
 
 
 def _make_pooled_legend(fig):
+    """Shared legend: city color dots + OLS/WLS line styles."""
     handles = [
         mlines.Line2D([], [], color=c, linewidth=0,
                       marker="o", markersize=6, label=city, alpha=0.7)
@@ -81,20 +104,39 @@ def _make_pooled_legend(fig):
         mlines.Line2D([], [], color="black", linewidth=2,
                       linestyle="--", label="WLS (pooled)"),
     ]
-    fig.legend(handles=handles, loc="lower center",
-               ncol=len(CITY_COLORS) + 2, fontsize=8.5,
-               framealpha=0.9, edgecolor="#ccc")
+    fig.legend(
+        handles=handles,
+        loc="lower center",
+        ncol=len(CITY_COLORS) + 2,
+        fontsize=8.5,
+        framealpha=0.9,
+        edgecolor="#ccc",
+    )
 
 
 # ==============================================================================
-# Method A — pooled bin-level plots
+# Method A — Pooled bin-level plots
 # ==============================================================================
 
-def plot_method_A_pooled(all_results: dict, save_prefix: str = "method_A_pooled"):
+def plot_method_A_pooled(
+    all_results: dict,
+    save_prefix: str = "method_A_pooled",
+) -> None:
     """
-    Pooled version of Method A plots.
+    Pooled Method A diagnostic plots.
     Concatenates bin data from all cities; fits one OLS + one WLS on the pool.
-    Produces 2 figures: distance and population.
+
+    Produces 2 figures:
+        {save_prefix}_distance.png  — match rate vs distance (bin_mid_km)
+        {save_prefix}_pop.png       — match rate vs log(bin_mid_pop)
+
+    Each figure: 2x2 subplots, one per dataset (ove / sf / fsq / osm).
+    Scatter points are colored by city.
+
+    Parameters
+    ----------
+    all_results : dict  output of run_mr_analysis() keyed by city name
+    save_prefix : str   filename prefix for saved figures
     """
     for fig_tag, x_col, weight_col, x_label, log_x in [
         ("distance", "bin_mid_km",  "total_poi", "distance from center (km)", False),
@@ -106,15 +148,14 @@ def plot_method_A_pooled(all_results: dict, save_prefix: str = "method_A_pooled"
         fig.suptitle(
             f"Method A (bin, pooled) — match rate vs {fig_tag}\n"
             f"OLS (solid) vs WLS (dashed), all cities combined",
-            fontsize=12, y=1.01
+            fontsize=12, y=1.01,
         )
 
         for ax, ds in zip(axes.flat, DS_ORDER):
-            # concat all cities for this dataset
             frames = []
             for city, res in all_results.items():
-                df = res[bin_key].copy()
-                df = df[df["dataset"] == ds]
+                df       = res[bin_key].copy()
+                df       = df[df["dataset"] == ds]
                 df["city"] = city
                 frames.append(df)
             pooled = pd.concat(frames, ignore_index=True)
@@ -124,18 +165,36 @@ def plot_method_A_pooled(all_results: dict, save_prefix: str = "method_A_pooled"
 
         _make_pooled_legend(fig)
         plt.tight_layout(rect=[0, 0.06, 1, 1])
+        plt.savefig(f"{save_prefix}_{fig_tag}.png", dpi=150, bbox_inches="tight")
         plt.show()
+        print(f"Saved: {save_prefix}_{fig_tag}.png")
 
 
 # ==============================================================================
-# Method C — pooled tract-level plots
+# Method C — Pooled tract-level plots
 # ==============================================================================
 
-def plot_method_C_pooled(all_results: dict, save_prefix: str = "method_C_pooled"):
+def plot_method_C_pooled(
+    all_results: dict,
+    msa_configs: dict,
+    save_prefix: str = "method_C_pooled",
+) -> None:
     """
-    Pooled version of Method C plots.
-    Rebuilds tract-level data from all_results (tract_gdf already stored).
-    Produces 2 figures: distance and population.
+    Pooled Method C diagnostic plots.
+    Rebuilds tract-level match_rate from tract_gdf stored in all_results.
+
+    Produces 2 figures:
+        {save_prefix}_distance.png  — match rate vs dist_to_center_km
+        {save_prefix}_pop.png       — match rate vs log(pop_density)
+
+    Each figure: 2x2 subplots, one per dataset.
+    Scatter points are colored by city.
+
+    Parameters
+    ----------
+    all_results : dict  output of run_mr_analysis() keyed by city name
+    msa_configs : dict  MSA_CONFIGS dict (needs 'center' and 'datasets' per city)
+    save_prefix : str   filename prefix for saved figures
     """
     for fig_tag, x_label, log_x in [
         ("distance", "distance from center (km)", False),
@@ -145,29 +204,27 @@ def plot_method_C_pooled(all_results: dict, save_prefix: str = "method_C_pooled"
         fig.suptitle(
             f"Method C (tract, pooled) — match rate vs {fig_tag}\n"
             f"OLS (solid) vs WLS (dashed), all cities combined",
-            fontsize=12, y=1.01
+            fontsize=12, y=1.01,
         )
 
         for ax, ds in zip(axes.flat, DS_ORDER):
             frames = []
             for city, res in all_results.items():
-                # pull pre-computed reg tables to get tract-level x values
-                reg_key = "distance_reg_C_ols" if fig_tag == "distance" \
-                           else "pop_reg_C_ols"
-
-                # rebuild tract match_rate from tract_gdf stored in results
                 tract_gdf = res["tract_gdf"]
-                gdf = MSA_CONFIGS[city]["datasets"][ds]
+                gdf       = msa_configs[city]["datasets"][ds]
 
+                # spatial join to get GEOID + pop_density per POI
                 gdf_j = gpd.sjoin(
                     gdf.to_crs("EPSG:3857"),
                     tract_gdf[["GEOID", "pop_density", "geometry"]
                                ].to_crs("EPSG:3857"),
-                    how="left", predicate="within"
+                    how="left", predicate="within",
                 ).drop(columns=["index_right"], errors="ignore").to_crs("EPSG:4326")
 
                 gdf_j["_match"] = _parse_true_match(
-                    gdf_j["is_true_match"]).astype(float)
+                    gdf_j["is_true_match"]
+                ).astype(float)
+
                 tc = (
                     gdf_j.groupby("GEOID")["_match"]
                     .agg(n_poi="count", matched="sum")
@@ -176,9 +233,9 @@ def plot_method_C_pooled(all_results: dict, save_prefix: str = "method_C_pooled"
                 tc["match_rate"] = tc["matched"] / tc["n_poi"]
 
                 if fig_tag == "distance":
-                    center = MSA_CONFIGS[city]["center"]
-                    tp = tract_gdf.to_crs("EPSG:3857").copy()
-                    pt = gpd.GeoDataFrame(
+                    center = msa_configs[city]["center"]
+                    tp     = tract_gdf.to_crs("EPSG:3857").copy()
+                    pt     = gpd.GeoDataFrame(
                         geometry=[center], crs="EPSG:4326"
                     ).to_crs("EPSG:3857")
                     tp["x_val"] = (
@@ -192,9 +249,11 @@ def plot_method_C_pooled(all_results: dict, save_prefix: str = "method_C_pooled"
                     tc = tc[tc["pop_density"] > 0].copy()
                     tc = tc.rename(columns={"pop_density": "x_val"})
 
-                tc["city"]    = city
+                tc["city"]      = city
                 tc["total_poi"] = tc["n_poi"]
-                frames.append(tc[["x_val", "match_rate", "total_poi", "city"]].dropna())
+                frames.append(
+                    tc[["x_val", "match_rate", "total_poi", "city"]].dropna()
+                )
 
             pooled = pd.concat(frames, ignore_index=True)
             _draw_pooled_panel(ax, pooled, "x_val", "total_poi", x_label, log_x=log_x)
@@ -202,4 +261,6 @@ def plot_method_C_pooled(all_results: dict, save_prefix: str = "method_C_pooled"
 
         _make_pooled_legend(fig)
         plt.tight_layout(rect=[0, 0.06, 1, 1])
+        plt.savefig(f"{save_prefix}_{fig_tag}.png", dpi=150, bbox_inches="tight")
         plt.show()
+        print(f"Saved: {save_prefix}_{fig_tag}.png")
