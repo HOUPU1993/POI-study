@@ -1,7 +1,7 @@
 SELECT *
 FROM
     OPENROWSET(
-        BULK 'https://overturemapswestus2.blob.core.windows.net/release/2025-12-17.0/theme=places/type=place/',
+        BULK 'https://overturemapswestus2.blob.core.windows.net/release/2026-04-15.0/theme=places/type=place/',
         FORMAT = 'PARQUET'
     )
 WITH
@@ -20,7 +20,7 @@ WITH
     AS
         [result]
 WHERE
-        TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.xmin')) > -75.195498
-    AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.xmax')) < -71.777492
-    AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.ymin')) > 39.475206
-    AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.ymax')) < 41.527202
+        TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.xmin')) > -96.621987
+    AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.xmax')) < -94.35339
+    AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.ymin')) > 28.764842
+    AND TRY_CONVERT(FLOAT, JSON_VALUE(bbox, '$.ymax')) < 30.90672
